@@ -7,13 +7,15 @@ This Google Cloud Function acts as a proxy to list and download Google Storage B
 List objects in a bucket
 
 ```bash
-curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://functionid.a.run.app/info?bucket=<bucket_name>
+curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+https://functionid.a.run.app/info?bucket=<bucket_name>
 ```
 
 List objects in a bucket
 
 ```bash
-curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>
+curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+ https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>
 ```
 
 ## Deploy
