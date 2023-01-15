@@ -15,7 +15,7 @@ List objects in a bucket
 
 ```bash
 curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
- https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>
+https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>
 ```
 
 ## Deploy
