@@ -11,11 +11,17 @@ curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
 https://functionid.a.run.app/info?bucket=<bucket_name>
 ```
 
-List objects in a bucket
+Download a file from a bucket
 
 ```bash
 curl  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
 https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>
+```
+
+To call the function using custom authentication, fill the `apikey` query parameter with your API key stored in Firebase.
+
+```bash
+curl https://functionid.a.run.app/download?bucket=<bucket_name>&filename=<file_name>&apikey=<api_key>
 ```
 
 ## Deploy
@@ -26,6 +32,12 @@ Otherwise the function can be deployed from Google Cloud Console as well (requir
 ```bash
 gcloud functions deploy gcp-storage-proxy --trigger-http --gen2 --runtime go119 \
 --region=europe-west1 --source . --entry-point Handler
+```
+
+Custom authentication via Firebase/Firestore is also supported. To use custom auth instead of native GCP authentication, deploy the function as follows
+
+```bash
+gcloud functions deploy gcp-storage-proxy --set-env-vars AUTH_ENABLED=true,PROJECT_ID=<your_project_id> --allow-unauthenticated --trigger-http --gen2 --runtime go119 --region=europe-west1 --source . --entry-point Handler
 ```
 
 ## Local testing
