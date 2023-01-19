@@ -15,8 +15,11 @@ import (
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/loupeznik/gcp-storage-proxy/models"
 	"google.golang.org/api/iterator"
 )
+
+var user models.User
 
 func init() {
 	functions.HTTP("GetBucket", getBucket)
@@ -35,18 +38,21 @@ func isAuthEnabled() bool {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+
 	if isAuthEnabled() {
 		ctx := context.Background()
 
 		firestoreClient := setupFirestore(ctx)
 
-		_, err := firestoreClient.Collection("users").Where("API-KEY", "==", r.URL.Query().Get("apikey")).Documents(ctx).Next()
+		data, err := firestoreClient.Collection("users").Where("API-KEY", "==", r.URL.Query().Get("apikey")).Documents(ctx).Next()
 
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("401 - Unauthorized"))
 			return
 		}
+
+		data.DataTo(&user)
 	}
 
 	if strings.HasPrefix(r.RequestURI, "/info") {
@@ -102,6 +108,10 @@ func getBucket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if !isObjectAccessible(user.AllowedObjectPatterns, obj.Name) {
+			continue
+		}
+
 		result = append(result, obj)
 	}
 
@@ -124,6 +134,12 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 	if bucketName == "" || fileName == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("400 - Bucket or file name were not specified"))
+		return
+	}
+
+	if !isObjectAccessible(user.AllowedObjectPatterns, fileName) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("403 - You do not have access to this resource"))
 		return
 	}
 
@@ -164,4 +180,18 @@ func setupFirestore(ctx context.Context) *firestore.Client {
 	}
 
 	return client
+}
+
+func isObjectAccessible(allowedPrefixes []string, objectName string) bool {
+	for _, prefix := range allowedPrefixes {
+		if prefix == "*" {
+			return true
+		}
+
+		if strings.HasPrefix(objectName, strings.Replace(prefix, "*", "", 1)) {
+			return true
+		}
+	}
+
+	return false
 }
