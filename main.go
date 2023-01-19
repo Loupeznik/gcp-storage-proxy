@@ -7,9 +7,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"google.golang.org/api/iterator"
@@ -21,7 +24,31 @@ func init() {
 	functions.HTTP("Handler", handler)
 }
 
+func isAuthEnabled() bool {
+	isEnabled, err := strconv.ParseBool(os.Getenv("AUTH_ENABLED"))
+
+	if err != nil {
+		isEnabled = false
+	}
+
+	return isEnabled
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
+	if isAuthEnabled() {
+		ctx := context.Background()
+
+		firestoreClient := setupFirestore(ctx)
+
+		_, err := firestoreClient.Collection("users").Where("API-KEY", "==", r.URL.Query().Get("apikey")).Documents(ctx).Next()
+
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - Unauthorized"))
+			return
+		}
+	}
+
 	if strings.HasPrefix(r.RequestURI, "/info") {
 		getBucket(w, r)
 		return
@@ -32,7 +59,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(http.StatusNotFound)
 	w.Write([]byte("404 - Endpoint not found"))
 }
 
@@ -125,4 +152,16 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	w.Write(bytes)
+}
+
+func setupFirestore(ctx context.Context) *firestore.Client {
+	projectID := os.Getenv("PROJECT_ID")
+
+	client, err := firestore.NewClient(ctx, projectID)
+
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
+
+	return client
 }
